@@ -437,3 +437,14 @@ from .html import (  # noqa: E402
     HTML5_UA_COUNTER_STYLE, HTML5_UA_STYLESHEET, HTML5_UA_FORM_STYLESHEET,
     HTML5_PH_STYLESHEET)
 from .document import Document, Page  # noqa: E402
+from .replica import (  # noqa: E402
+    ReplicaConverter,
+    convert_html_to_pdf,
+    create_replica_demo_bundle,
+)
+
+__all__.extend([
+    'ReplicaConverter',
+    'convert_html_to_pdf',
+    'create_replica_demo_bundle',
+])
