@@ -1,0 +1,170 @@
+#%RAML 1.0
+---
+title: WeasyPrint Replica API
+description: |
+  Minimal HTTP API that exposes the ``ReplicaConverter`` helper used by
+  WeasyPrint to convert HTML or MHTML sources into PDF documents.
+version: v1
+baseUri: http://localhost:8080
+mediaType: application/json
+protocols: [ HTTP ]
+
+types:
+  ReplicaConvertRequest:
+    type: object
+    description: Payload accepted by the ``/replica/convert`` endpoint.
+    properties:
+      source:
+        type: string
+        minLength: 1
+        required: true
+        description: |
+          HTML or MHTML document content. When ``source_is_base64`` is ``true``
+          this field contains base64 encoded data, otherwise it contains the
+          literal document text or bytes encoded using ``encoding``.
+      format:
+        type: string
+        enum: [ html, mhtml ]
+        required: false
+        default: html
+        description: Input format of ``source``.
+      encoding:
+        type: string
+        required: false
+        default: utf-8
+        description: Character set used to decode ``source`` when it is not
+          base64 encoded.
+      source_is_base64:
+        type: boolean
+        required: false
+        default: false
+        description: Indicates whether ``source`` is base64 encoded.
+      extra_css:
+        type: string[]
+        required: false
+        description: Additional CSS snippets applied during conversion.
+      pdf_options:
+        type: object
+        required: false
+        description: Optional keyword arguments forwarded to ``ReplicaConverter``
+          when generating the PDF.
+      presentational_hints:
+        type: boolean
+        required: false
+        default: true
+        description: Preserve HTML presentational hints in the conversion.
+      check_fonts:
+        type: boolean
+        required: false
+        default: true
+        description: Whether to validate fonts referenced by the document.
+      base_url:
+        type: string
+        required: false
+        description: Base URL used to resolve relative asset references.
+      response:
+        type: string
+        enum: [ pdf, json ]
+        required: false
+        default: pdf
+        description: Controls whether the API responds with binary PDF bytes or
+          a JSON object containing base64 data.
+      filename:
+        type: string
+        required: false
+        description: Optional filename suggested through the ``Content-Disposition``
+          header when ``response`` equals ``pdf``.
+    example:
+      source: "<html><body><h1>Hello Replica</h1></body></html>"
+      format: html
+      encoding: utf-8
+      response: json
+
+  ReplicaConvertPdfResponse:
+    type: file
+    fileTypes: [ application/pdf ]
+    description: Binary PDF payload written to the response body.
+
+  ReplicaConvertJsonResponse:
+    type: object
+    properties:
+      pdf:
+        type: string
+        required: true
+        description: Base64 encoded PDF document.
+    example:
+      pdf: JVBERi0xLjQKJYGBgYEK...
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string
+        required: true
+    example:
+      error: "Request payload must include a non-empty \"source\" string"
+
+/
+  get:
+    description: Service metadata endpoint.
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              service: weasyprint-replica
+              status: ok
+      404:
+        body:
+          application/json:
+            type: ErrorResponse
+/health:
+  get:
+    description: Health check endpoint.
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              status: ok
+/replica:
+  get:
+    description: Alias for the service metadata endpoint.
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              service: weasyprint-replica
+              status: ok
+  /health:
+    get:
+      description: Alias for the health check endpoint.
+      responses:
+        200:
+          body:
+            application/json:
+              example:
+                status: ok
+  /convert:
+    post:
+      description: Convert a HTML or MHTML document into a PDF using
+        ``ReplicaConverter``.
+      body:
+        application/json:
+          type: ReplicaConvertRequest
+      responses:
+        200:
+          body:
+            application/json:
+              type: ReplicaConvertJsonResponse
+            application/pdf:
+              type: ReplicaConvertPdfResponse
+        400:
+          body:
+            application/json:
+              type: ErrorResponse
+        500:
+          body:
+            application/json:
+              type: ErrorResponse

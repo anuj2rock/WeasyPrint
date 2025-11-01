@@ -1,0 +1,227 @@
+openapi: 3.0.3
+info:
+  title: WeasyPrint Replica API
+  version: v1
+  description: |
+    Minimal HTTP API that exposes the `ReplicaConverter` helper used by WeasyPrint to
+    convert HTML or MHTML sources into PDF documents.
+servers:
+  - url: http://localhost:8080
+paths:
+  /:
+    get:
+      summary: Service metadata
+      description: Service metadata endpoint.
+      responses:
+        '200':
+          description: Service metadata describing the running Replica API instance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatus'
+              example:
+                service: weasyprint-replica
+                status: ok
+        '404':
+          description: Endpoint not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /health:
+    get:
+      summary: Health check
+      description: Health check endpoint.
+      responses:
+        '200':
+          description: Health information for the Replica API service.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: ok
+  /replica:
+    get:
+      summary: Service metadata alias
+      description: Alias for the service metadata endpoint.
+      responses:
+        '200':
+          description: Service metadata describing the running Replica API instance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceStatus'
+              example:
+                service: weasyprint-replica
+                status: ok
+  /replica/health:
+    get:
+      summary: Health check alias
+      description: Alias for the health check endpoint.
+      responses:
+        '200':
+          description: Health information for the Replica API service.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              example:
+                status: ok
+  /replica/convert:
+    post:
+      summary: Convert HTML or MHTML content into PDF
+      description: Convert a HTML or MHTML document into a PDF using `ReplicaConverter`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplicaConvertRequest'
+            examples:
+              htmlResponse:
+                summary: JSON (base64) response
+                value:
+                  source: "<!DOCTYPE html><html><body><p>Hello Replica API</p></body></html>"
+                  response: json
+              base64Source:
+                summary: Base64 HTML input
+                value:
+                  source: SFRNTCA8YnJldz4=
+                  source_is_base64: true
+      responses:
+        '200':
+          description: Successful conversion result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplicaConvertJsonResponse'
+              example:
+                pdf: JVBERi0xLjQKJYGBgYEK...
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              description: Suggested filename for the generated PDF when returning binary data.
+              schema:
+                type: string
+            Content-Length:
+              description: Size of the returned PDF binary stream.
+              schema:
+                type: integer
+        '400':
+          description: Request validation failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected conversion error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ReplicaConvertRequest:
+      type: object
+      description: Payload accepted by the `/replica/convert` endpoint.
+      properties:
+        source:
+          type: string
+          minLength: 1
+          description: |
+            HTML or MHTML document content. When `source_is_base64` is `true` this field contains
+            base64 encoded data, otherwise it contains the literal document text or bytes encoded
+            using `encoding`.
+        format:
+          type: string
+          enum: [html, mhtml]
+          default: html
+          description: Input format of `source`.
+        encoding:
+          type: string
+          default: utf-8
+          description: Character set used to decode `source` when it is not base64 encoded.
+        source_is_base64:
+          type: boolean
+          default: false
+          description: Indicates whether `source` is base64 encoded.
+        extra_css:
+          type: array
+          items:
+            type: string
+          description: Additional CSS snippets applied during conversion.
+        pdf_options:
+          type: object
+          additionalProperties: true
+          description: Optional keyword arguments forwarded to `ReplicaConverter` when generating the PDF.
+        presentational_hints:
+          type: boolean
+          default: true
+          description: Preserve HTML presentational hints in the conversion.
+        check_fonts:
+          type: boolean
+          default: true
+          description: Whether to validate fonts referenced by the document.
+        base_url:
+          type: string
+          description: Base URL used to resolve relative asset references.
+        response:
+          type: string
+          enum: [pdf, json]
+          default: pdf
+          description: Controls whether the API responds with binary PDF bytes or a JSON object containing base64 data.
+        filename:
+          type: string
+          description: Optional filename suggested through the `Content-Disposition` header when `response` equals `pdf`.
+      required:
+        - source
+      examples:
+        default:
+          source: "<html><body><h1>Hello Replica</h1></body></html>"
+          format: html
+          encoding: utf-8
+          response: json
+    ReplicaConvertJsonResponse:
+      type: object
+      properties:
+        pdf:
+          type: string
+          description: Base64 encoded PDF document.
+      required:
+        - pdf
+      example:
+        pdf: JVBERi0xLjQKJYGBgYEK...
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message explaining the failure.
+      required:
+        - error
+      example:
+        error: "Request payload must include a non-empty \"source\" string"
+    ServiceStatus:
+      type: object
+      properties:
+        service:
+          type: string
+          example: weasyprint-replica
+        status:
+          type: string
+          example: ok
+      required:
+        - service
+        - status
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+      required:
+        - status
