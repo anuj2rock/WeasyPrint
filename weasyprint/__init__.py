@@ -442,9 +442,17 @@ from .replica import (  # noqa: E402
     convert_html_to_pdf,
     create_replica_demo_bundle,
 )
+from .replica_api import (  # noqa: E402
+    ReplicaAPIHandler,
+    create_replica_api_server,
+    serve_replica_api,
+)
 
 __all__.extend([
     'ReplicaConverter',
     'convert_html_to_pdf',
     'create_replica_demo_bundle',
+    'ReplicaAPIHandler',
+    'create_replica_api_server',
+    'serve_replica_api',
 ])
