@@ -255,7 +255,7 @@ class ReplicaAPIHandler(BaseHTTPRequestHandler):
                 raise ValueError('Unable to decode base64 HTML payload') from exc
             try:
                 return raw.decode(encoding)
-            except UnicodeDecodeError as exc:
+            except (UnicodeDecodeError, LookupError) as exc:
                 raise ValueError('Unable to decode HTML payload using the given encoding') from exc
         return source
 
@@ -267,7 +267,10 @@ class ReplicaAPIHandler(BaseHTTPRequestHandler):
                 return base64.b64decode(source)
             except (ValueError, binascii.Error) as exc:
                 raise ValueError('Unable to decode base64 payload') from exc
-        return source.encode(encoding)
+        try:
+            return source.encode(encoding)
+        except (UnicodeEncodeError, LookupError) as exc:
+            raise ValueError('Unable to encode payload using the given encoding') from exc
 
     def _json_response(self, status: HTTPStatus, data: dict[str, Any]) -> None:
         body = json.dumps(data).encode('utf-8')
