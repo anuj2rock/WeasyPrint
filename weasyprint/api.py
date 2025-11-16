@@ -47,10 +47,27 @@ class AttachmentDescriptor(_BaseSource):
     relationship: Optional[str] = None
 
 
+def _decode_html_payload(html: Optional[str], html_base64: Optional[str]) -> str:
+    """Return normalized HTML payload from raw or base64 input."""
+
+    provided = [value is not None for value in (html, html_base64)]
+    if sum(provided) != 1:
+        raise ValueError('Provide exactly one of html or html_base64.')
+    if html is not None:
+        return html
+    assert html_base64 is not None
+    try:
+        decoded = base64.b64decode(html_base64, validate=True).decode('utf-8')
+    except (ValueError, UnicodeDecodeError) as exc:  # pragma: no cover - tiny helper
+        raise ValueError('Invalid base64-encoded html payload.') from exc
+    return decoded
+
+
 class PdfRequest(BaseModel):
     """Request body for PDF generation."""
 
-    html: str
+    html: Optional[str] = None
+    html_base64: Optional[str] = None
     base_url: Optional[str] = None
     stylesheets: List[StylesheetDescriptor] = Field(default_factory=list)
     attachments: List[AttachmentDescriptor] = Field(default_factory=list)
@@ -67,6 +84,12 @@ class PdfRequest(BaseModel):
             key: value for key, value in options.items()
             if value is not None and key in DEFAULT_OPTIONS}
         self.pdf_options = filtered
+        return self
+
+    @model_validator(mode='after')
+    def _normalize_html_payload(self):  # noqa: B902
+        self.html = _decode_html_payload(self.html, self.html_base64)
+        self.html_base64 = None
         return self
 
 
