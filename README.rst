@@ -31,3 +31,48 @@ required to contribute to WeasyPrint. Unless explicitly stated otherwise, any
 contribution intentionally submitted for inclusion is licensed under the BSD
 3-clause license, without any additional terms or conditions. For full
 authorship information, see the version control history.
+
+
+Local HTTP API
+--------------
+
+WeasyPrint ships with a small FastAPI service that exposes the PDF renderer
+over HTTP. Install the optional dependencies with:
+
+.. code-block:: bash
+
+    pip install "weasyprint[api]"
+
+The application can be served with Python directly:
+
+.. code-block:: bash
+
+    python -m weasyprint.api
+
+or by relying on Uvicorn:
+
+.. code-block:: bash
+
+    uvicorn weasyprint.api:app --reload
+
+The service exposes ``POST /v1/pdf`` and expects JSON containing the HTML
+string, optional ``base_url``, stylesheet or attachment descriptors, and
+``pdf_options`` matching ``DEFAULT_OPTIONS``. The response includes the PDF as
+base64 together with the collected logs:
+
+.. code-block:: bash
+
+    curl -X POST http://127.0.0.1:8000/v1/pdf \
+        -H 'Content-Type: application/json' \
+        -d '{"html": "<h1>Hello</h1>", "stylesheets": [{"string": "h1 { color: #333; }"}]}'
+
+Or with HTTPie:
+
+.. code-block:: bash
+
+    http POST :8000/v1/pdf html='<h1>Hello</h1>' \
+        stylesheets:='[{"string": "h1 { color: #333; }"}]'
+
+The JSON body contains ``pdf`` (base64 PDF), ``progress_log`` with the "Step
+1" to "Step 7" messages, ``log`` for general warnings, and ``warnings`` listing
+individual warning messages.
