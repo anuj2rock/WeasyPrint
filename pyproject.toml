@@ -54,9 +54,11 @@ Donation = 'https://opencollective.com/courtbouillon'
 [project.optional-dependencies]
 doc = ['sphinx', 'furo']
 test = ['pytest', 'ruff']
+api = ['fastapi', 'uvicorn', 'httpx']
 
 [project.scripts]
 weasyprint = 'weasyprint.__main__:main'
+weasyprint-api = 'weasyprint.api:main'
 
 [tool.flit.sdist]
 exclude = ['.*']
