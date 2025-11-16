@@ -3,6 +3,7 @@
 import unicodedata
 from math import inf
 
+from ..css import Pending
 from ..css.properties import INHERITED
 from ..formatting_structure import boxes, build
 from .absolute import AbsolutePlaceholder, absolute_layout
@@ -11,7 +12,7 @@ from .float import avoid_collisions, float_layout
 from .grid import grid_layout
 from .leader import handle_leader
 from .min_max import handle_min_max_width
-from .percent import resolve_one_percentage, resolve_percentages
+from .percent import percentage, resolve_one_percentage, resolve_percentages
 from .preferred import inline_min_content_width, shrink_to_fit, trailing_whitespace_size
 from .replaced import inline_replaced_box_layout
 from .table import find_in_flow_baseline, table_wrapper_width
@@ -189,8 +190,9 @@ def get_next_linebox(context, linebox, position_y, bottom_space, skip_stack,
             fixed_boxes, bottom_space, skip_stack=None)
         float_children.append(new_waiting_float)
         if waiting_float_resume_at:
-            context.broken_out_of_flow[new_waiting_float] = (
-                waiting_float, containing_block, waiting_float_resume_at)
+            context.add_broken_out_of_flow(
+                new_waiting_float, waiting_float, containing_block,
+                waiting_float_resume_at)
     if float_children:
         line.children += tuple(float_children)
 
@@ -590,8 +592,8 @@ def _out_of_flow_layout(context, box, containing_block, index, child,
                 context, child, containing_block, absolute_boxes, fixed_boxes,
                 bottom_space, skip_stack=None)
             if float_resume_at:
-                context.broken_out_of_flow[child] = (
-                    child, containing_block, float_resume_at)
+                context.add_broken_out_of_flow(
+                    child, child, containing_block, float_resume_at)
             waiting_children.append((index, new_child, child))
             child = new_child
 
@@ -1084,6 +1086,10 @@ def inline_box_verticality(box, top_bottom_subtrees, baseline_y):
             # Later, we will assume for this subtree that its baseline
             # is at y=0.
             child_baseline_y = 0
+        elif isinstance(vertical_align, Pending):
+            height, _ = strut(box.style)
+            child_baseline_y = baseline_y - percentage(
+                vertical_align, box.style, height)
         else:
             # Numeric value: The child’s baseline is `vertical_align` above
             # (lower y) the parent’s baseline.
