@@ -55,10 +55,13 @@ or by relying on Uvicorn:
 
     uvicorn weasyprint.api:app --reload
 
-The service exposes ``POST /v1/pdf`` and expects JSON containing the HTML
-string, optional ``base_url``, stylesheet or attachment descriptors, and
-``pdf_options`` matching ``DEFAULT_OPTIONS``. The response includes the PDF as
-base64 together with the collected logs:
+The service exposes ``POST /v1/pdf`` and expects JSON containing either the
+plain HTML string in ``html`` or its base64-encoded counterpart in
+``html_base64``. Use ``html_base64`` for self-contained files that already
+inline CSS, fonts and base64 images so you can ship a single payload. As
+before, you can pass optional ``base_url``, stylesheet or attachment
+descriptors, and ``pdf_options`` matching ``DEFAULT_OPTIONS``. The response
+always includes the PDF as base64 together with the collected logs:
 
 .. code-block:: bash
 
@@ -73,6 +76,22 @@ Or with HTTPie:
     http POST :8000/v1/pdf html='<h1>Hello</h1>' \
         stylesheets:='[{"string": "h1 { color: #333; }"}]'
 
-The JSON body contains ``pdf`` (base64 PDF), ``progress_log`` with the "Step
-1" to "Step 7" messages, ``log`` for general warnings, and ``warnings`` listing
-individual warning messages.
+To push a standalone ``report.html`` file, encode it and send the JSON with
+``curl``:
+
+.. code-block:: bash
+
+    python - <<'PY'
+    import base64, json, pathlib
+    payload = {
+        "html_base64": base64.b64encode(pathlib.Path("report.html").read_bytes()).decode()
+    }
+    pathlib.Path("payload.json").write_text(json.dumps(payload))
+    PY
+    curl -X POST http://127.0.0.1:8000/v1/pdf \
+        -H 'Content-Type: application/json' \
+        --data-binary @payload.json
+
+Both transports return the same observability fields: ``pdf`` (base64 PDF),
+``progress_log`` with the "Step 1" to "Step 7" messages, ``log`` for general
+warnings, and ``warnings`` listing individual warning messages.
